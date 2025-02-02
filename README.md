@@ -27,9 +27,10 @@ This repository complements paper, **Müller, Xu, Lehbib, and Chen (2025)**, whi
 
 <a href="https://www.globalmacrodata.com/data.html" target="_blank" rel="noopener noreferrer">Download via website</a>
 
-**Python package:**
+**R package:**
 ```
-pip install global_macro_data
+install.packages("devtools")
+devtools::install_github("Yangbo-Wang/global_macro_data_R")
 ```
 
 **How to use (an example)**
