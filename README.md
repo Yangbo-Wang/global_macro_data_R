@@ -32,23 +32,25 @@ This repository complements paper, **Müller, Xu, Lehbib, and Chen (2025)**, whi
 
 **R package:**
 ```
+# Install devtools if not already installed
 install.packages("devtools")
+# Install the package from GitHub
 devtools::install_github("Yangbo-Wang/global_macro_data_R")
 ```
 
 **How to use (an example)**
 ```
-# Load MyPackage
-library(MyPackage)
+# Load the Package
+library(global_macro_data_R)
 
-# Use parameter country to get data within 2000-2010
-df <- download_gmd_csv(start_year = 2000, end_year = 2010, 
-                       country = c("United States", "France", "Germany", "China"))
+# Download the Latest Available Data
+data <- GMD()
 
-# Also can use ISO3 to filter data
-df <- download_gmd_csv(start_year = 2000, end_year = 2010, 
-                       ISO3 = c("USA", "FRA", "DEU", "CHN"))
+# Download Data for a Specific Version (2025_01)
+data <- GMD(year = 2025, quarter = 1)
 
+# Filter Data by Country
+data <- GMD(year = 2025, quarter = 1, country = "USA")
 ```
 
 ## Parameters
