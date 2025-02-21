@@ -55,7 +55,7 @@ data <- GMD(year = 2025, quarter = 1, country = "USA")
 
 ## Parameters
 - **`year` (numeric)**: Representing the desired year (e.g., 2025). If NULL, the latest available dataset is used.
-- **`quarter` (numeric)**: Eepresenting the quarter (1, 3, 6, or 9). If NULL, the latest available dataset is used.
+- **`quarter` (numeric)**: Representing the quarter (1, 3, 6, or 9). If NULL, the latest available dataset is used.
 - **`country` (character string)**: Specifying the ISO3 country code (e.g., "USA"). If NULL, returns all countries.
 
 ## Release schedule 
