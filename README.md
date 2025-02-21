@@ -41,7 +41,7 @@ devtools::install_github("Yangbo-Wang/global_macro_data_R")
 **How to use (an example)**
 ```
 # Load the Package
-library(global_macro_data_R)
+library(globalmacrodata)
 
 # Download the Latest Available Data
 data <- GMD()
