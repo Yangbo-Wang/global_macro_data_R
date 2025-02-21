@@ -2,21 +2,20 @@
 % Please edit documentation in R/GMD.R
 \name{GMD}
 \alias{GMD}
-\title{Download Global Macro Data}
+\title{Download and Filter Global Macro Data}
 \usage{
-GMD(year = NULL, month = NULL, country = NULL)
+GMD(year = NULL, quarter = NULL, country = NULL)
 }
 \arguments{
-\item{year}{A numeric value representing the desired year (e.g., 2025). If NULL, the latest default dataset is used.}
+\item{year}{A numeric value representing the desired year (e.g., 2025). If NULL, the latest available dataset is used.}
 
-\item{month}{A numeric value representing the month (1, 4, 7, or 10). If NULL, the latest default dataset is used.}
+\item{quarter}{A numeric value representing the quarter (1, 3, 6, or 9). If NULL, the latest available dataset is used.}
 
-\item{country}{A string specifying the ISO3 country code (e.g., "CHN" for China). If NULL, returns all countries.}
+\item{country}{A character string specifying the ISO3 country code (e.g., "CHN"). If NULL, returns all countries.}
 }
 \value{
 A data frame containing the requested data.
 }
 \description{
-This function downloads a dataset from the Global Macro Database.
-If no year and month are provided, it fetches the default dataset from "GMD.csv".
+This function downloads a dataset from the Global Macro Database based on the provided year, quarter, and country.
 }

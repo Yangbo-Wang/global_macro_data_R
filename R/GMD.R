@@ -1,70 +1,92 @@
-#' Download Global Macro Data
+#' Download and Filter Global Macro Data
 #'
-#' This function downloads a dataset from the Global Macro Database.
-#' If no year and month are provided, it fetches the default dataset from "GMD.csv".
+#' This function downloads a dataset from the Global Macro Database based on the provided year, quarter, and country.
 #'
-#' @param year A numeric value representing the desired year (e.g., 2025). If NULL, the latest default dataset is used.
-#' @param month A numeric value representing the month (1, 4, 7, or 10). If NULL, the latest default dataset is used.
-#' @param country A string specifying the ISO3 country code (e.g., "CHN" for China). If NULL, returns all countries.
+#' @param year A numeric value representing the desired year (e.g., 2025). If NULL, the latest available dataset is used.
+#' @param quarter A numeric value representing the quarter (1, 3, 6, or 9). If NULL, the latest available dataset is used.
+#' @param country A character string specifying the ISO3 country code (e.g., "CHN"). If NULL, returns all countries.
 #' @return A data frame containing the requested data.
 #' @export
 #' @importFrom utils download.file read.csv
-GMD <- function(year = NULL, month = NULL, country = NULL) {
+GMD <- function(year = NULL, quarter = NULL, country = NULL) {
   ISO3 <- NULL
-  # Base URL for the data source
+  # Base URL
   base_url <- "https://www.globalmacrodata.com"
 
-  # Default behavior: download GMD.csv when no year and month are provided
-  if (is.null(year) || is.null(month)) {
-    data_url <- paste0(base_url, "/GMD.csv")
-  } else {
-    # User-specified year and month: construct the corresponding version UR
-    month <- sprintf("%02d", as.integer(month))  # Ensure month is in two-digit format
-    if (!month %in% c("01", "04", "07", "10")) {
-      stop("Error: Month must be one of 1 (Q1), 4 (Q2), 7 (Q3), or 10 (Q4).")
-    }
-    version <- sprintf("%d_%s", year, month)
-    data_url <- sprintf("%s/GMD_%s.csv", base_url, version)
+  # Validate year input
+  if (!is.null(year) && (!is.numeric(year) || year < 2020 || year > 2050)) {
+    stop("Error: Year must be a numeric value between 2020 and 2050.")
   }
 
-  # Check if the URL exists before attempting download
+  # Validate quarter input
+  valid_quarters <- c(1, 3, 6, 9, 12)
+  if (!is.null(quarter)) {
+    if (!quarter %in% valid_quarters) {
+      stop("Error: Quarter must be one of 1, 3, 6, 9, or 12.")
+    }
+    quarter <- sprintf("%02d", as.integer(quarter))  # Format quarter as "01", "03", etc.
+  }
+
+  # Automatically find the latest available dataset if year and quarter are NULL
+  if (is.null(year) || is.null(quarter)) {
+    current_year <- as.integer(format(Sys.Date(), "%Y"))
+    current_quarter <- c(12, 9, 6, 3, 1)  # Order of checking
+    found <- FALSE
+    for (y in current_year:2020) {
+      for (q in current_quarter) {
+        url <- sprintf("%s/GMD_%d_%02d.csv", base_url, y, q)
+        if (RCurl::url.exists(url)) {
+          year <- y
+          quarter <- sprintf("%02d", q)
+          found <- TRUE
+          break
+        }
+      }
+      if (found) break
+    }
+
+    if (!found) {
+      stop("Error: No available dataset found on the server.")
+    }
+  }
+
+  # Construct the final URL
+  data_url <- sprintf("%s/GMD_%d_%s.csv", base_url, year, quarter)
+
+  # Check if the URL exists
   if (!RCurl::url.exists(data_url)) {
-    warning(sprintf("Error: Data file not found at %s", data_url))
-    return(NULL)
+    stop(sprintf("Error: Data file not found at %s", data_url))
   }
 
   # Download the CSV file
   temp_file <- tempfile(fileext = ".csv")
   download.file(data_url, temp_file, mode = "wb")
 
-  # Read the CSV file into a data frame
+  # Read CSV file into a data frame
   data <- tryCatch({
     read.csv(temp_file, stringsAsFactors = FALSE)
   }, error = function(e) {
-    warning("Error downloading or reading the file.")
-    return(NULL)
+    stop("Error downloading or reading the file.")
   })
 
-  # Filter data by country if specified
+  # Ensure required columns exist
+  required_columns <- c("year", "ISO3", "countryname")
+  if (!all(required_columns %in% colnames(data))) {
+    stop("Error: Required columns missing in dataset.")
+  }
+
+  # Filter by country
   if (!is.null(country)) {
     country <- toupper(country)
-
-    # Check if the 'ISO3' column exists before filtering
-    if (!"ISO3" %in% colnames(data)) {
-      warning("Error: Country filtering failed because 'ISO3' column is missing.")
-      return(data)
-    }
-
-    # Check if the provided country code is valid
     if (!country %in% unique(data$ISO3)) {
-      warning(sprintf("Error: Invalid country code '%s'. Returning full dataset.", country))
-      return(data)
+      stop(sprintf("Error: Invalid country code '%s'.", country))
     }
-
     data <- subset(data, ISO3 == country)
     message(sprintf("Filtered data for country: %s", country))
   }
 
+  # Show dataset info
+  message(sprintf("Final dataset: %d observations of %d variables", nrow(data), ncol(data)))
+
   return(data)
 }
-
