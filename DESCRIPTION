@@ -11,3 +11,5 @@ RoxygenNote: 7.3.2
 Imports: 
     RCurl,
     utils
+URL: https://github.com/Yangbo-Wang/globalmacrodata
+BugReports: https://github.com/Yangbo-Wang/globalmacrodata/issues
