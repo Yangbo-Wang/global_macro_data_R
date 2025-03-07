@@ -1,92 +1,119 @@
-#' Download and Filter Global Macro Data
+#' Get macroeconomic data from Global Macro Data
 #'
-#' This function downloads a dataset from the Global Macro Database based on the provided year, quarter, and country.
-#'
-#' @param year A numeric value representing the desired year (e.g., 2025). If NULL, the latest available dataset is used.
-#' @param quarter A numeric value representing the quarter (1, 3, 6, or 9). If NULL, the latest available dataset is used.
-#' @param country A character string specifying the ISO3 country code (e.g., "CHN"). If NULL, returns all countries.
-#' @return A data frame containing the requested data.
+#' @param version A string representing the dataset version (e.g., "2025_01").
+#' @param country A string or vector of ISO3 country codes (e.g., "USA" or c("CHN", "USA")).
+#' @param variables A vector of variable names to include.
+#' @param show_preview A boolean indicating whether to show a preview.
+#' @return A dataframe containing the requested macroeconomic data.
 #' @export
-#' @importFrom utils download.file read.csv
-GMD <- function(year = NULL, quarter = NULL, country = NULL) {
-  ISO3 <- NULL
-  # Base URL
+gmd <- function(version = NULL, country = NULL, variables = NULL, show_preview = TRUE) {
+
+  library(httr)
+  library(readr)
+  library(dplyr)
+
   base_url <- "https://www.globalmacrodata.com"
-
-  # Validate year input
-  if (!is.null(year) && (!is.numeric(year) || year < 2020 || year > 2050)) {
-    stop("Error: Year must be a numeric value between 2020 and 2050.")
-  }
-
-  # Validate quarter input
-  valid_quarters <- c(1, 3, 6, 9, 12)
-  if (!is.null(quarter)) {
-    if (!quarter %in% valid_quarters) {
-      stop("Error: Quarter must be one of 1, 3, 6, 9, or 12.")
-    }
-    quarter <- sprintf("%02d", as.integer(quarter))  # Format quarter as "01", "03", etc.
-  }
-
-  # Automatically find the latest available dataset if year and quarter are NULL
-  if (is.null(year) || is.null(quarter)) {
-    current_year <- as.integer(format(Sys.Date(), "%Y"))
-    current_quarter <- c(12, 9, 6, 3, 1)  # Order of checking
-    found <- FALSE
-    for (y in current_year:2020) {
-      for (q in current_quarter) {
-        url <- sprintf("%s/GMD_%d_%02d.csv", base_url, y, q)
-        if (RCurl::url.exists(url)) {
-          year <- y
-          quarter <- sprintf("%02d", q)
-          found <- TRUE
-          break
-        }
-      }
-      if (found) break
-    }
-
-    if (!found) {
-      stop("Error: No available dataset found on the server.")
+  
+  if (is.null(version)) {
+    version <- find_latest_data(base_url)
+  } else {
+    show_preview <- FALSE
+    if (!grepl("^\\d{4}_(01|03|06|09|12)$", version)) {
+      stop("Version must be in format 'YYYY_MM' where MM is one of: 01, 03, 06, 09, 12")
     }
   }
 
-  # Construct the final URL
-  data_url <- sprintf("%s/GMD_%d_%s.csv", base_url, year, quarter)
+  data_url <- paste0(base_url, "/GMD_", version, ".csv")
+  message("Downloading: ", data_url)
 
-  # Check if the URL exists
-  if (!RCurl::url.exists(data_url)) {
-    stop(sprintf("Error: Data file not found at %s", data_url))
+  # download data
+  response <- httr::GET(data_url)
+  if (httr::status_code(response) != 200) {
+    stop("Error: Data file not found at ", data_url)
   }
 
-  # Download the CSV file
-  temp_file <- tempfile(fileext = ".csv")
-  download.file(data_url, temp_file, mode = "wb")
+  df <- readr::read_csv(httr::content(response, as = "text"))
 
-  # Read CSV file into a data frame
-  data <- tryCatch({
-    read.csv(temp_file, stringsAsFactors = FALSE)
-  }, error = function(e) {
-    stop("Error downloading or reading the file.")
-  })
-
-  # Ensure required columns exist
-  required_columns <- c("year", "ISO3", "countryname")
-  if (!all(required_columns %in% colnames(data))) {
-    stop("Error: Required columns missing in dataset.")
+  # check iso3 code
+  script_dir <- system.file(package = "globalmacrodata")
+  isomapping_path <- file.path(script_dir, "isomapping.csv")
+  if (file.exists(isomapping_path)) {
+    isomapping <- readr::read_csv(isomapping_path, show_col_types = FALSE)
+  } else {
+    isomapping <- NULL
   }
 
-  # Filter by country
+  # countries
   if (!is.null(country)) {
-    country <- toupper(country)
-    if (!country %in% unique(data$ISO3)) {
-      stop(sprintf("Error: Invalid country code '%s'.", country))
+    country <- toupper(country)  
+    invalid_countries <- setdiff(country, unique(df$ISO3))
+
+    if (length(invalid_countries) > 0) {
+      message("Error: Invalid country code(s): ", paste(invalid_countries, collapse = ", "))
+
+      if (!is.null(isomapping)) {
+        message("Available country codes from isomapping.csv:")
+        print(isomapping)
+      } else {
+        message("Available country codes from dataset:")
+        print(unique(df[, c("ISO3", "countryname")]))
+      }
+
+      stop("Invalid country code(s): ", paste(invalid_countries, collapse = ", "))
     }
-    data <- subset(data, ISO3 == country)
-    message(sprintf("Filtered data for country: %s", country))
+
+    df <- df %>% dplyr::filter(ISO3 %in% country)
+    message("Filtered data for countries: ", paste(country, collapse = ", "))
   }
 
-  # Show dataset info
-  message(sprintf("Final dataset: %d observations of %d variables", nrow(data), ncol(data)))
+  # variables
+  if (!is.null(variables)) {
+    required_cols <- c("ISO3", "countryname", "year")
+    available_vars <- intersect(variables, colnames(df))
 
-  return(data)
+    if (length(available_vars) == 0) {
+      warning("None of the requested variables are available in the dataset.")
+    }
+
+    df <- df %>% dplyr::select(dplyr::all_of(c(required_cols, available_vars)))
+  }
+
+  # Preview functionality for default call
+  default_call <- show_preview && is.null(country) && is.null(variables)
+
+  if (default_call) {
+    message("Singapore (SGP) data, 2000-2020")
+
+    # Filter Singapore (SGP) data for 2000-2020
+    sample_df <- df[df$ISO3 == "SGP" & df$year >= 2000 & df$year <= 2020, , drop = FALSE]
+
+    if (nrow(sample_df) > 0) {
+      message(nrow(sample_df), " rows out of ", nrow(df), " total rows in the dataset")
+
+      # Define preview columns in exact order as in Python
+      preview_cols <- c("year", "ISO3", "countryname", "nGDP", "rGDP", "pop", "unemp", "infl", 
+                        "exports", "imports", "govdebt_GDP", "ltrate")
+
+      # Filter to available columns
+      available_cols <- preview_cols[preview_cols %in% colnames(sample_df)]
+
+      # Sort by year and select preview columns
+      sample_df <- sample_df %>% 
+        dplyr::arrange(year) %>% 
+        dplyr::select(dplyr::all_of(available_cols))
+
+      # Print the preview data explicitly (mimicking Python's print)
+      print(sample_df)
+
+      # Return only the preview data for default call
+      return(sample_df)
+    } else {
+      message("No data available for Singapore (SGP) between 2000-2020")
+      return(NULL)
+    }
+  }
+
+  message("Final dataset: ", nrow(df), " observations of ", ncol(df), " variables")
+  flush.console()
+  return(df)
 }

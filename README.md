@@ -39,24 +39,35 @@ devtools::install_github("Yangbo-Wang/global_macro_data_R")
 ```
 
 **How to use (an example)**
-```
+```R
 # Load the Package
 library(globalmacrodata)
 
-# Download the Latest Available Data
-data <- GMD()
+# Get data from latest available version
+df <- gmd()
 
-# Download Data for a Specific Version (2025_01)
-data <- GMD(year = 2025, quarter = 1)
+# Get data from a specific version
+df <- gmd(version="2025_01")
 
-# Filter Data by Country
-data <- GMD(year = 2025, quarter = 1, country = "USA")
+# Get data for a specific country
+df <- gmd(country="USA")
+
+# Get data for multiple countries
+df <- gmd(country=c("USA", "CHN", "DEU"))
+
+# Get specific variables
+df <- gmd(variables=c("rGDP", "infl", "unemp"))
+
+# Combine parameters
+df <- gmd(version="2025_01", country=c("USA","CHN"), variables=c("rGDP", "unemp", "CPI"))
+
 ```
 
 ## Parameters
-- **`year` (numeric)**: Representing the desired year (e.g., 2025). If NULL, the latest available dataset is used.
-- **`quarter` (numeric)**: Representing the quarter (1, 3, 6, or 9). If NULL, the latest available dataset is used.
-- **`country` (character string)**: Specifying the ISO3 country code (e.g., "USA"). If NULL, returns all countries.
+- **version (numeric)**: Dataset version in format 'YYYY_MM' (e.g., '2025_01'). If None, the latest dataset is used.
+- **country (character or character vector)**: ISO3 country code(s) (e.g., "SGP" or c("MRT", "SGP")). If None, returns all countries.
+- **variables (character or character vector)**: List of variable codes to include (e.g., c("rGDP", "unemp")). If None, all variables are included.
+- **show_preview (logical)**: If True and no other parameters are provided, shows a preview.
 
 ## Release schedule 
 
