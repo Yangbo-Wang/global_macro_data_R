@@ -43,8 +43,11 @@ devtools::install_github("Yangbo-Wang/global_macro_data_R")
 # Load the Package
 library(globalmacrodata)
 
-# Get data from latest available version
+# Get preview data
 df <- gmd()
+
+# Get data from latest available version
+df <- gmd(show_preview=FALSE)
 
 # Get data from a specific version
 df <- gmd(version="2025_01")
